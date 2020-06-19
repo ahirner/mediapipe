@@ -148,7 +148,7 @@ class OpenCvVideoImShowCalculator : public CalculatorBase {
     }
   }
   cv::imshow("MediaPipe",frame);
-  cv::waitKey(25);
+  cv::waitKey(1);
   
   return ::mediapipe::OkStatus();
 }
