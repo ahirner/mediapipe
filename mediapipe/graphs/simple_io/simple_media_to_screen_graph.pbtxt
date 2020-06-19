@@ -1,7 +1,7 @@
 # MediaPipe graph, simple input and output video 
 # on CPU.
 # Used in the example in
-# mediapipie/examples/desktop/object_detection:object_detection_tensorflow.
+# mediapipie/examples/desktop/simpleIO:simple_io_tflite.
 
 # Decodes an input video file into images and a video header.
 node {
@@ -11,19 +11,13 @@ node {
   output_stream: "VIDEO_PRESTREAM:input_video_header"
 }
 
-# Encodes the annotated images into a video file, adopting properties specified
-# in the input video header, e.g., video framerate.
+# Shows stream on local window
 node {
   calculator: "OpenCvVideoImShowCalculator"
   input_stream: "VIDEO:input_video"
   input_stream: "VIDEO_PRESTREAM:input_video_header"
-  node_options: {
-    [type.googleapis.com/mediapipe.OpenCvVideoEncoderCalculatorOptions]: {
-      codec: "avc1"
-      video_format: "mp4"
-    }
-  }
 }
+
 # Needed to not raise (on mac os):
 # 'NSWindow drag regions should only be invalidated on the Main Thread'
 executor {

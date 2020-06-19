@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "absl/strings/str_split.h"
-#include "mediapipe/calculators/video/opencv_video_encoder_calculator.pb.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
@@ -34,39 +33,17 @@
 
 namespace mediapipe {
 
-// Encodes the input video stream and produces a media file.
-// The media file can be output to the output_file_path specified as a side
-// packet. Currently, the calculator only supports one video stream (in
-// mediapipe::ImageFrame).
-//
-// Example config to generate the output video file:
-//
-// node {
-//   calculator: "OpenCvVideoImShowCalculator"
-//   input_stream: "VIDEO:video"
-//   input_stream: "VIDEO_PRESTREAM:video_header"
-//   input_side_packet: "OUTPUT_FILE_PATH:output_file_path"
-//   node_options {
-//     [type.googleapis.com/mediapipe.OpenCvVideoImShowCalculatorOptions]: {
-//        codec: "avc1"
-//        video_format: "mp4"
-//     }
-//   }
-// }
 class OpenCvVideoImShowCalculator : public CalculatorBase {
  public:
   static ::mediapipe::Status GetContract(CalculatorContract* cc);
   ::mediapipe::Status Open(CalculatorContext* cc) override;
+ // Unlike MediaPipe convention, Process only runs in MainThread, at least on Mac OS
   ::mediapipe::Status Process(CalculatorContext* cc) override;
   ::mediapipe::Status Close(CalculatorContext* cc) override;
 
  private:
-  ::mediapipe::Status SetUpVideoWriter();
+  ::mediapipe::Status SetupVideoShow();
 
-  std::string output_file_path_;
-  int four_cc_;
-
-  std::unique_ptr<cv::VideoWriter> writer_;
 };
 
 ::mediapipe::Status OpenCvVideoImShowCalculator::GetContract(
@@ -76,46 +53,18 @@ class OpenCvVideoImShowCalculator : public CalculatorBase {
   if (cc->Inputs().HasTag("VIDEO_PRESTREAM")) {
     cc->Inputs().Tag("VIDEO_PRESTREAM").Set<VideoHeader>();
   }
-  //RET_CHECK(cc->InputSidePackets().HasTag("OUTPUT_FILE_PATH"));
-  //cc->InputSidePackets().Tag("OUTPUT_FILE_PATH").Set<std::string>();
   return ::mediapipe::OkStatus();
 }
 
 ::mediapipe::Status OpenCvVideoImShowCalculator::Open(CalculatorContext* cc) {
-  OpenCvVideoEncoderCalculatorOptions options =
-      cc->Options<OpenCvVideoEncoderCalculatorOptions>();
-  RET_CHECK(options.has_codec() && options.codec().length() == 4)
-      << "A 4-character codec code must be specified in "
-         "OpenCvVideoEncoderCalculatorOptions";
-  const char* codec_array = options.codec().c_str();
-  four_cc_ = mediapipe::fourcc(codec_array[0], codec_array[1], codec_array[2],
-                               codec_array[3]);
-  RET_CHECK(!options.video_format().empty())
-      << "Video format must be specified in "
-         "OpenCvVideoEncoderCalculatorOptions";
- /* output_file_path_ =
-      cc->InputSidePackets().Tag("OUTPUT_FILE_PATH").Get<std::string>();
-  std::vector<std::string> splited_file_path =
-      absl::StrSplit(output_file_path_, '.');
-  RET_CHECK(splited_file_path.size() >= 2 &&
-            splited_file_path[splited_file_path.size() - 1] ==
-                options.video_format())
-      << "The output file path is invalid.";*/
-  // If the video header will be available, the video metadata will be fetched
-  // from the video header directly. The calculator will receive the video
-  // header packet at timestamp prestream.
-  if (cc->Inputs().HasTag("VIDEO_PRESTREAM")) {
-    return ::mediapipe::OkStatus();
-  }
-  return SetUpVideoWriter();
+  
+  return SetupVideoShow();
 }
 
 ::mediapipe::Status OpenCvVideoImShowCalculator::Process(
     CalculatorContext* cc) {
   if (cc->InputTimestamp() == Timestamp::PreStream()) {
-    //const VideoHeader& video_header =
-    //    cc->Inputs().Tag("VIDEO_PRESTREAM").Get<VideoHeader>();
-    return SetUpVideoWriter();
+    return SetupVideoShow();
   }
 
   const ImageFrame& image_frame =
@@ -154,12 +103,11 @@ class OpenCvVideoImShowCalculator : public CalculatorBase {
 }
 
 ::mediapipe::Status OpenCvVideoImShowCalculator::Close(CalculatorContext* cc) {
-  //cv::destroyAllWindows();
+  cv::destroyWindow("MediaPipe");
   return ::mediapipe::OkStatus();
 }
 
-::mediapipe::Status OpenCvVideoImShowCalculator::SetUpVideoWriter() {
-
+::mediapipe::Status OpenCvVideoImShowCalculator::SetupVideoShow() {
   cv::namedWindow("MediaPipe",cv::WINDOW_GUI_EXPANDED);
   return ::mediapipe::OkStatus();
 }
