@@ -24,3 +24,9 @@ node {
     }
   }
 }
+# Needed to not raise (on mac os):
+# 'NSWindow drag regions should only be invalidated on the Main Thread'
+executor {
+    type: "ApplicationThreadExecutor"
+   }
+
